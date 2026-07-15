@@ -179,3 +179,18 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# Python后端缓存
+__pycache__/
+*.pyc
+*.sqlite
+.env
+venv/
+# Next.js前端依赖&打包缓存
+node_modules/
+.next/
+out/
+npm-debug.log
+# Mac系统隐藏文件
+.DS_Store
+# 日志文件
+*.log
