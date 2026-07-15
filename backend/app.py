@@ -20,11 +20,20 @@ except ImportError:
     from models import Activity, Booking, TimeSlot, db
 
 
+def success_response(data=None, msg="操作成功"):
+    return jsonify({"code": 0, "msg": msg, "data": data if data is not None else {}})
+
+
+def error_response(msg="操作失败", data=None, status_code=400):
+    return jsonify({"code": 1, "msg": msg, "data": data if data is not None else {}}), status_code
+
+
 def create_app():
     if load_dotenv:
         load_dotenv()
 
     app = Flask(__name__)
+    app_env = os.getenv("APP_ENV", os.getenv("FLASK_ENV", "development")).lower()
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL",
@@ -32,11 +41,20 @@ def create_app():
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JSON_AS_ASCII"] = False
+    app.config["APP_ENV"] = app_env
 
     db.init_app(app)
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000,https://shop-booking-system.vercel.app",
+        ).split(",")
+        if origin.strip()
+    ]
     CORS(
         app,
-        resources={r"/api/*": {"origins": os.getenv("CORS_ORIGINS", "*").split(",")}},
+        resources={r"/api/*": {"origins": allowed_origins}},
         supports_credentials=True,
     )
 
@@ -51,31 +69,27 @@ def create_app():
 
 
 def configure_logging(app):
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    log_dir = os.getenv("LOG_DIR", "logs")
-    os.makedirs(log_dir, exist_ok=True)
-
-    formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s [%(name)s] %(message)s"
-    )
-
-    file_handler = RotatingFileHandler(
-        os.path.join(log_dir, "app.log"),
-        maxBytes=1024 * 1024,
-        backupCount=5,
-        encoding="utf-8",
-    )
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(log_level)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(log_level)
-
+    is_production = app.config["APP_ENV"] == "production"
+    log_level = logging.INFO if is_production else logging.DEBUG
+    formatter = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
     app.logger.handlers.clear()
     app.logger.setLevel(log_level)
-    app.logger.addHandler(file_handler)
-    app.logger.addHandler(console_handler)
+
+    if is_production:
+        log_dir = os.getenv("LOG_DIR", "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        handler = RotatingFileHandler(
+            os.path.join(log_dir, "app.log"),
+            maxBytes=1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+    else:
+        handler = logging.StreamHandler()
+
+    handler.setFormatter(formatter)
+    handler.setLevel(log_level)
+    app.logger.addHandler(handler)
 
 
 def register_routes(app):
@@ -312,16 +326,7 @@ def register_error_handlers(app):
             request.path,
             error.description,
         )
-        return (
-            jsonify(
-                {
-                    "code": error.code,
-                    "message": error.description,
-                    "data": None,
-                }
-            ),
-            error.code,
-        )
+        return error_response(error.description, {}, error.code)
 
     @app.errorhandler(Exception)
     def handle_exception(error):
@@ -332,16 +337,7 @@ def register_error_handlers(app):
             request.path,
             error,
         )
-        return (
-            jsonify(
-                {
-                    "code": 500,
-                    "message": "服务器内部错误",
-                    "data": None,
-                }
-            ),
-            500,
-        )
+        return error_response("服务器内部错误", {}, 500)
 
 
 app = create_app()
