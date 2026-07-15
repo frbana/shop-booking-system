@@ -1,9 +1,11 @@
 import logging
 import os
+import re
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import HTTPException
 
 try:
@@ -113,6 +115,67 @@ def register_routes(app):
         except Exception as error:
             app.logger.exception("查询预约时段失败: %s", error)
             return jsonify({"code": 1, "msg": "查询预约时段失败", "data": []}), 500
+
+    @app.post("/api/book-order")
+    def create_book_order():
+        try:
+            payload = request.get_json(silent=True) or {}
+            name = str(payload.get("name", "")).strip()
+            phone = str(payload.get("phone", "")).strip()
+            slot_id = payload.get("slot_id")
+
+            # 校验预约人姓名、手机号和预约时段入参。
+            if not name:
+                return jsonify({"code": 1, "msg": "姓名不能为空", "data": {}}), 400
+            if not re.fullmatch(r"\d{11}", phone):
+                return jsonify({"code": 1, "msg": "手机号必须为11位数字", "data": {}}), 400
+            try:
+                slot_id = int(slot_id)
+            except (TypeError, ValueError):
+                return jsonify({"code": 1, "msg": "预约时段参数错误", "data": {}}), 400
+
+            time_slot = TimeSlot.query.get(slot_id)
+            if not time_slot:
+                return jsonify({"code": 1, "msg": "预约时段不存在", "data": {}}), 404
+
+            # 同一手机号在同一时段只能保留一笔正常预约。
+            existing_booking = Booking.query.filter_by(
+                time_slot_id=slot_id,
+                customer_phone=phone,
+                status=Booking.STATUS_NORMAL,
+            ).first()
+            if existing_booking:
+                return jsonify({"code": 1, "msg": "该手机号已预约此时段", "data": {}}), 400
+
+            # 剩余人数实时计算，只有剩余人数大于0才允许预约。
+            remaining_count = time_slot.max_capacity - time_slot.booked_count
+            if remaining_count <= 0:
+                return jsonify({"code": 1, "msg": "该时段已约满", "data": {}}), 400
+
+            booking = Booking(
+                time_slot_id=slot_id,
+                customer_name=name,
+                customer_phone=phone,
+                status=Booking.STATUS_NORMAL,
+            )
+            time_slot.booked_count += 1
+
+            db.session.add(booking)
+            db.session.commit()
+
+            data = {
+                "booking_id": booking.id,
+                "slot_id": time_slot.id,
+                "name": booking.customer_name,
+                "phone": booking.customer_phone,
+                "status": booking.status,
+                "remaining_count": time_slot.max_capacity - time_slot.booked_count,
+            }
+            return jsonify({"code": 0, "msg": "预约成功", "data": data})
+        except SQLAlchemyError as error:
+            db.session.rollback()
+            app.logger.exception("创建预约订单数据库异常: %s", error)
+            return jsonify({"code": 1, "msg": "预约失败，请稍后重试", "data": {}}), 500
 
     @app.get("/api/summary")
     def summary():
