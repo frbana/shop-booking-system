@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, request
@@ -176,6 +177,46 @@ def register_routes(app):
             db.session.rollback()
             app.logger.exception("创建预约订单数据库异常: %s", error)
             return jsonify({"code": 1, "msg": "预约失败，请稍后重试", "data": {}}), 500
+
+    @app.get("/api/activity")
+    def get_activities():
+        try:
+            page = request.args.get("page", 1, type=int)
+            size = request.args.get("size", 10, type=int)
+            page = max(page, 1)
+            size = min(max(size, 1), 100)
+
+            pagination = Activity.query.order_by(Activity.end_at.desc()).paginate(
+                page=page,
+                per_page=size,
+                error_out=False,
+            )
+
+            now = datetime.utcnow()
+            data = []
+            for activity in pagination.items:
+                if now < activity.start_at:
+                    status = "未开始"
+                elif now <= activity.end_at:
+                    status = "进行中"
+                else:
+                    status = "已结束"
+
+                data.append(
+                    {
+                        "id": activity.id,
+                        "title": activity.title,
+                        "start_at": activity.start_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        "end_at": activity.end_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        "promotion_text": activity.promotion_text,
+                        "status": status,
+                    }
+                )
+
+            return jsonify({"code": 0, "msg": "查询成功", "data": data})
+        except SQLAlchemyError as error:
+            app.logger.exception("查询活动列表数据库异常: %s", error)
+            return jsonify({"code": 1, "msg": "查询活动失败", "data": []}), 500
 
     @app.get("/api/summary")
     def summary():
