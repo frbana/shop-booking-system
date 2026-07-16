@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { PageBanner, StateBox, StatusPill } from '../components/StyleBlocks';
 import { useTimeSlots } from '../hooks/useTimeSlots';
 
 export default function HomePage() {
@@ -13,17 +14,14 @@ export default function HomePage() {
 
   return (
     <main className="page">
-      <section className="header">
-        <h1>店铺预约</h1>
-        <p>选择合适时段，查看实时剩余空位。</p>
-      </section>
+      <PageBanner title="店铺预约" description="选择合适时段，查看实时剩余空位。" />
 
-      {loading && <div className="state">正在加载预约时段...</div>}
+      {loading && <StateBox message="正在加载预约时段..." />}
 
-      {!loading && errorMsg && <div className="state error">{errorMsg}</div>}
+      {!loading && errorMsg && <StateBox tone="error" message={errorMsg} />}
 
       {!loading && !errorMsg && timeSlots.length === 0 && (
-        <div className="state">暂无可预约时段</div>
+        <StateBox message="暂无可预约时段" />
       )}
 
       {!loading && !errorMsg && timeSlots.length > 0 && (
@@ -44,9 +42,9 @@ export default function HomePage() {
                 <span className="time">
                   {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
                 </span>
-                <span className={disabled ? 'remaining full' : 'remaining'}>
+                <StatusPill tone={disabled ? 'danger' : 'success'}>
                   {disabled ? '已约满' : `剩余 ${slot.remaining_count} 位`}
-                </span>
+                </StatusPill>
               </button>
             );
           })}
@@ -56,27 +54,11 @@ export default function HomePage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
-          padding: 40px 24px;
-          background: #f9fafb;
-          color: #111827;
-        }
-
-        .header {
-          max-width: 960px;
-          margin: 0 auto 24px;
-        }
-
-        .header h1 {
-          margin: 0;
-          font-size: 32px;
-          line-height: 1.2;
-          font-weight: 700;
-        }
-
-        .header p {
-          margin: 10px 0 0;
-          color: #6b7280;
-          font-size: 15px;
+          padding: 44px 24px 64px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0)),
+            transparent;
+          color: var(--text);
         }
 
         .grid {
@@ -94,12 +76,15 @@ export default function HomePage() {
           align-items: flex-start;
           justify-content: space-between;
           padding: 18px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(226, 232, 240, 0.9);
           border-radius: 8px;
-          background: #ffffff;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+            #ffffff;
           color: inherit;
           text-align: left;
           cursor: pointer;
+          box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
           transition:
             border-color 0.15s ease,
             box-shadow 0.15s ease,
@@ -107,9 +92,9 @@ export default function HomePage() {
         }
 
         .card:hover:not(:disabled) {
-          border-color: #111827;
-          box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
-          transform: translateY(-2px);
+          border-color: rgba(37, 99, 235, 0.45);
+          box-shadow: 0 18px 36px rgba(37, 99, 235, 0.16);
+          transform: translateY(-3px);
         }
 
         .card:disabled {
@@ -118,58 +103,20 @@ export default function HomePage() {
         }
 
         .date {
-          color: #374151;
+          color: var(--teal);
           font-size: 14px;
-          font-weight: 600;
+          font-weight: 800;
         }
 
         .time {
-          color: #111827;
+          color: var(--text);
           font-size: 24px;
-          font-weight: 700;
-        }
-
-        .remaining {
-          display: inline-flex;
-          align-items: center;
-          min-height: 28px;
-          padding: 0 10px;
-          border-radius: 999px;
-          background: #ecfdf5;
-          color: #047857;
-          font-size: 13px;
-          font-weight: 600;
-        }
-
-        .remaining.full {
-          background: #f3f4f6;
-          color: #6b7280;
-        }
-
-        .state {
-          max-width: 960px;
-          margin: 0 auto;
-          padding: 32px 20px;
-          border: 1px dashed #d1d5db;
-          border-radius: 8px;
-          background: #ffffff;
-          color: #6b7280;
-          text-align: center;
-        }
-
-        .state.error {
-          border-color: #fecaca;
-          background: #fef2f2;
-          color: #b91c1c;
+          font-weight: 800;
         }
 
         @media (max-width: 640px) {
           .page {
-            padding: 28px 16px;
-          }
-
-          .header h1 {
-            font-size: 26px;
+            padding: 28px 16px 48px;
           }
 
           .grid {

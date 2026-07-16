@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PageBanner, StateBox, StatusPill } from '../../components/StyleBlocks';
 import { requestApi } from '../../utils/api';
 
 type Order = {
@@ -87,12 +88,9 @@ export default function UserPage() {
 
   return (
     <main className="page">
-      <section className="panel">
-        <div className="header">
-          <h1>个人中心</h1>
-          <p>输入手机号查询预约记录，可取消未取消的预约订单。</p>
-        </div>
+      <PageBanner title="个人中心" description="输入手机号查询预约记录，可取消未取消的预约订单。" />
 
+      <section className="panel">
         <form className="search" onSubmit={handleSubmit}>
           <label className="field">
             <span>手机号</span>
@@ -111,10 +109,10 @@ export default function UserPage() {
         </form>
 
         {phoneError && <div className="hint">{phoneError}</div>}
-        {errorMsg && <div className="state error">{errorMsg}</div>}
+        {errorMsg && <StateBox tone="error" message={errorMsg} />}
 
         {!errorMsg && searched && !loading && orders.length === 0 && (
-          <div className="state">暂无预约记录</div>
+          <StateBox message="暂无预约记录" />
         )}
 
         {!errorMsg && orders.length > 0 && (
@@ -132,9 +130,9 @@ export default function UserPage() {
                         {order.slot.end_time.slice(0, 5)}
                       </p>
                     </div>
-                    <span className={canceled ? 'status canceled' : 'status normal'}>
+                    <StatusPill tone={canceled ? 'danger' : 'success'}>
                       {order.status}
-                    </span>
+                    </StatusPill>
                   </div>
 
                   <div className="meta">
@@ -164,30 +162,14 @@ export default function UserPage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
-          padding: 40px 24px;
-          background: #f9fafb;
-          color: #111827;
+          padding: 44px 24px 64px;
+          background: transparent;
+          color: var(--text);
         }
 
         .panel {
           max-width: 860px;
           margin: 0 auto;
-        }
-
-        .header {
-          margin-bottom: 22px;
-        }
-
-        .header h1 {
-          margin: 0;
-          font-size: 32px;
-          line-height: 1.2;
-        }
-
-        .header p {
-          margin: 10px 0 0;
-          color: #6b7280;
-          font-size: 15px;
         }
 
         .search {
@@ -197,9 +179,10 @@ export default function UserPage() {
           align-items: end;
           margin-bottom: 14px;
           padding: 18px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(226, 232, 240, 0.9);
           border-radius: 8px;
-          background: #ffffff;
+          background: var(--card);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
         }
 
         .field {
@@ -208,36 +191,39 @@ export default function UserPage() {
         }
 
         .field span {
-          color: #374151;
+          color: var(--text);
           font-size: 14px;
-          font-weight: 600;
+          font-weight: 800;
         }
 
         .field input {
           width: 100%;
           min-height: 44px;
           padding: 0 12px;
-          border: 1px solid #d1d5db;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
+          background: rgba(255, 255, 255, 0.94);
+          color: var(--text);
           outline: none;
         }
 
         .field input:focus {
-          border-color: #111827;
-          box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
         }
 
         .search button,
         .cancel {
           min-height: 44px;
           padding: 0 16px;
-          border: 1px solid #111827;
+          border: 1px solid transparent;
           border-radius: 8px;
-          background: #111827;
+          background: linear-gradient(135deg, var(--primary), var(--teal));
           color: #ffffff;
           cursor: pointer;
-          font-weight: 600;
+          font-weight: 800;
           white-space: nowrap;
+          box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
         }
 
         .search button:disabled,
@@ -261,9 +247,10 @@ export default function UserPage() {
           display: grid;
           gap: 14px;
           padding: 18px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(226, 232, 240, 0.9);
           border-radius: 8px;
-          background: #ffffff;
+          background: var(--card);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
         }
 
         .cardHeader {
@@ -281,68 +268,28 @@ export default function UserPage() {
 
         .cardHeader p {
           margin: 6px 0 0;
-          color: #374151;
+          color: var(--primary-dark);
           font-size: 15px;
-          font-weight: 600;
-        }
-
-        .status {
-          display: inline-flex;
-          align-items: center;
-          min-height: 28px;
-          padding: 0 10px;
-          border-radius: 999px;
-          font-size: 13px;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-
-        .status.normal {
-          background: #ecfdf5;
-          color: #047857;
-        }
-
-        .status.canceled {
-          background: #f3f4f6;
-          color: #6b7280;
+          font-weight: 800;
         }
 
         .meta {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 8px 16px;
-          color: #4b5563;
+          color: #475569;
           font-size: 14px;
         }
 
         .cancel {
           justify-self: start;
-          border-color: #dc2626;
-          background: #dc2626;
-        }
-
-        .state {
-          padding: 32px 18px;
-          border: 1px dashed #d1d5db;
-          border-radius: 8px;
-          background: #ffffff;
-          color: #6b7280;
-          text-align: center;
-        }
-
-        .state.error {
-          border-color: #fecaca;
-          background: #fef2f2;
-          color: #b91c1c;
+          background: linear-gradient(135deg, var(--rose), #f97316);
+          box-shadow: 0 12px 24px rgba(225, 29, 72, 0.18);
         }
 
         @media (max-width: 640px) {
           .page {
             padding: 28px 16px;
-          }
-
-          .header h1 {
-            font-size: 26px;
           }
 
           .search {

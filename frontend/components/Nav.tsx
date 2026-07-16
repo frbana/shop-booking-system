@@ -28,7 +28,7 @@ export default function Nav() {
   return (
     <nav className="nav" aria-label="全局导航">
       <Link href="/" className="brand" aria-label="返回首页">
-        店铺预约
+        店铺预约系统
       </Link>
 
       <div className="links">
@@ -59,16 +59,18 @@ export default function Nav() {
           gap: 24px;
           min-height: 64px;
           padding: 0 24px;
-          border-bottom: 1px solid #e5e7eb;
-          background: rgba(255, 255, 255, 0.96);
-          backdrop-filter: blur(10px);
+          border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+          background: rgba(255, 255, 255, 0.82);
+          backdrop-filter: blur(16px);
+          box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
         }
 
         .brand {
           flex: 0 0 auto;
-          color: #111827;
-          font-size: 18px;
-          font-weight: 700;
+          color: #000000;
+          font-size: 30px;
+          font-weight: 900;
+          line-height: 1;
           text-decoration: none;
           white-space: nowrap;
         }
@@ -87,24 +89,26 @@ export default function Nav() {
           min-height: 40px;
           padding: 0 14px;
           border-radius: 8px;
-          color: #4b5563;
+          color: var(--muted);
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 700;
           text-decoration: none;
           transition:
             background-color 0.15s ease,
-            color 0.15s ease;
+            color 0.15s ease,
+            box-shadow 0.15s ease;
           white-space: nowrap;
         }
 
         .link:hover {
-          background: #f3f4f6;
-          color: #111827;
+          background: #eff6ff;
+          color: var(--primary-dark);
         }
 
         .link.active {
-          background: #111827;
+          background: linear-gradient(135deg, var(--primary), var(--teal));
           color: #ffffff;
+          box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
         }
 
         @media (max-width: 640px) {
@@ -117,7 +121,7 @@ export default function Nav() {
           }
 
           .brand {
-            font-size: 17px;
+            font-size: 24px;
           }
 
           .links {

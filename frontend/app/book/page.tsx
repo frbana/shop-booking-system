@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PageBanner, StateBox } from '../../components/StyleBlocks';
 import { useTimeSlots } from '../../hooks/useTimeSlots';
 import { requestApi } from '../../utils/api';
 
@@ -112,17 +113,14 @@ export default function BookPage() {
 
   return (
     <main className="page">
-      <section className="panel">
-        <div className="header">
-          <h1>预约到店时段</h1>
-          <p>填写预约信息后提交，预约结果可在个人中心查看。</p>
-        </div>
+      <PageBanner title="预约到店时段" description="填写预约信息后提交，预约结果可在个人中心查看。" />
 
-        {loading && <div className="state">正在加载预约时段...</div>}
-        {!loading && errorMsg && <div className="state error">{errorMsg}</div>}
+      <section className="panel">
+        {loading && <StateBox message="正在加载预约时段..." />}
+        {!loading && errorMsg && <StateBox tone="error" message={errorMsg} />}
 
         {!loading && !errorMsg && timeSlots.length === 0 && (
-          <div className="state">暂无可预约时段</div>
+          <StateBox message="暂无可预约时段" />
         )}
 
         {!loading && !errorMsg && timeSlots.length > 0 && (
@@ -216,34 +214,19 @@ export default function BookPage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
-          padding: 40px 24px;
-          background: #f9fafb;
-          color: #111827;
+          padding: 44px 24px 64px;
+          background: transparent;
+          color: var(--text);
         }
 
         .panel {
           max-width: 720px;
           margin: 0 auto;
           padding: 28px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(226, 232, 240, 0.9);
           border-radius: 8px;
-          background: #ffffff;
-        }
-
-        .header {
-          margin-bottom: 24px;
-        }
-
-        .header h1 {
-          margin: 0;
-          font-size: 30px;
-          line-height: 1.2;
-        }
-
-        .header p {
-          margin: 10px 0 0;
-          color: #6b7280;
-          font-size: 15px;
+          background: var(--card);
+          box-shadow: var(--shadow);
         }
 
         .form {
@@ -257,9 +240,9 @@ export default function BookPage() {
         }
 
         .field span {
-          color: #374151;
+          color: var(--text);
           font-size: 14px;
-          font-weight: 600;
+          font-weight: 800;
         }
 
         .field input,
@@ -267,17 +250,17 @@ export default function BookPage() {
           width: 100%;
           min-height: 44px;
           padding: 0 12px;
-          border: 1px solid #d1d5db;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
-          background: #ffffff;
-          color: #111827;
+          background: rgba(255, 255, 255, 0.92);
+          color: var(--text);
           outline: none;
         }
 
         .field input:focus,
         .field select:focus {
-          border-color: #111827;
-          box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
         }
 
         .field em {
@@ -291,13 +274,13 @@ export default function BookPage() {
           gap: 6px;
           padding: 14px;
           border-radius: 8px;
-          background: #f3f4f6;
-          color: #374151;
+          background: linear-gradient(135deg, #eff6ff, #fff7ed);
+          color: #334155;
           font-size: 14px;
         }
 
         .summary strong {
-          color: #111827;
+          color: var(--primary-dark);
         }
 
         .actions {
@@ -310,16 +293,22 @@ export default function BookPage() {
         .actions button {
           min-height: 42px;
           padding: 0 16px;
-          border: 1px solid #d1d5db;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
           background: #ffffff;
-          color: #111827;
+          color: var(--text);
           cursor: pointer;
-          font-weight: 600;
+          font-weight: 800;
+          transition:
+            transform 0.15s ease,
+            box-shadow 0.15s ease,
+            border-color 0.15s ease;
         }
 
         .actions button:hover:not(:disabled) {
-          border-color: #111827;
+          border-color: var(--primary);
+          box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+          transform: translateY(-1px);
         }
 
         .actions button:disabled {
@@ -328,23 +317,9 @@ export default function BookPage() {
         }
 
         .actions .primary {
-          border-color: #111827;
-          background: #111827;
+          border-color: transparent;
+          background: linear-gradient(135deg, var(--primary), var(--teal));
           color: #ffffff;
-        }
-
-        .state {
-          padding: 28px 18px;
-          border: 1px dashed #d1d5db;
-          border-radius: 8px;
-          color: #6b7280;
-          text-align: center;
-        }
-
-        .state.error {
-          border-color: #fecaca;
-          background: #fef2f2;
-          color: #b91c1c;
         }
 
         @media (max-width: 640px) {
@@ -354,10 +329,6 @@ export default function BookPage() {
 
           .panel {
             padding: 22px 16px;
-          }
-
-          .header h1 {
-            font-size: 26px;
           }
 
           .actions {
