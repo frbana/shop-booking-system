@@ -11,3 +11,4 @@
 | Day2 | 项目 AI 代码评审 | docs/code_review/day2_ai_code_review.md |
 | Day2 | AI 代码评审问题修复 | backend/app.py, frontend/utils/api.ts, frontend/hooks/useTimeSlots.ts, frontend/app/page.tsx, frontend/app/book/page.tsx, frontend/app/activity/page.tsx, frontend/app/user/page.tsx |
 | Day3 | README 项目文档生成 | README.md |
+| Day3 | API 接口文档 | api_doc.md |
