@@ -1,59 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-type TimeSlot = {
-  id: number;
-  slot_date: string;
-  start_time: string;
-  end_time: string;
-  max_capacity: number;
-  booked_count: number;
-  remaining_count: number;
-};
-
-type ApiResponse = {
-  code: number;
-  msg: string;
-  data: TimeSlot[];
-};
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+import { useTimeSlots } from '../hooks/useTimeSlots';
 
 export default function HomePage() {
   const router = useRouter();
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
-
-  useEffect(() => {
-    async function fetchTimeSlots() {
-      try {
-        setLoading(true);
-        setErrorMsg('');
-
-        const response = await fetch(`${API_BASE_URL}/api/time-slot`, {
-          method: 'GET',
-          cache: 'no-store',
-        });
-        const result: ApiResponse = await response.json();
-
-        if (!response.ok || result.code !== 0) {
-          throw new Error(result.msg || '时段加载失败');
-        }
-
-        setTimeSlots(Array.isArray(result.data) ? result.data : []);
-      } catch (error) {
-        setErrorMsg(error instanceof Error ? error.message : '时段加载失败');
-        setTimeSlots([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchTimeSlots();
-  }, []);
+  const { timeSlots, loading, errorMsg } = useTimeSlots();
 
   const handleSelectSlot = (slotId: number) => {
     router.push(`/book?slot_id=${slotId}`);

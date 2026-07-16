@@ -6,7 +6,9 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import HTTPException
 
 try:
@@ -95,7 +97,7 @@ def configure_logging(app):
 def register_routes(app):
     @app.get("/api/health")
     def health_check():
-        return jsonify({"code": 0, "message": "ok", "data": {"status": "healthy"}})
+        return success_response({"status": "healthy"}, "ok")
 
     @app.get("/api/time-slot")
     def get_time_slots():
@@ -126,10 +128,10 @@ def register_routes(app):
                     }
                 )
 
-            return jsonify({"code": 0, "msg": "查询成功", "data": data})
-        except Exception as error:
+            return success_response(data, "查询成功")
+        except SQLAlchemyError as error:
             app.logger.exception("查询预约时段失败: %s", error)
-            return jsonify({"code": 1, "msg": "查询预约时段失败", "data": []}), 500
+            return error_response("查询预约时段失败", [], 500)
 
     @app.post("/api/book-order")
     def create_book_order():
@@ -141,17 +143,17 @@ def register_routes(app):
 
             # 校验预约人姓名、手机号和预约时段入参。
             if not name:
-                return jsonify({"code": 1, "msg": "姓名不能为空", "data": {}}), 400
+                return error_response("姓名不能为空", {}, 400)
             if not re.fullmatch(r"\d{11}", phone):
-                return jsonify({"code": 1, "msg": "手机号必须为11位数字", "data": {}}), 400
+                return error_response("手机号必须为11位数字", {}, 400)
             try:
                 slot_id = int(slot_id)
             except (TypeError, ValueError):
-                return jsonify({"code": 1, "msg": "预约时段参数错误", "data": {}}), 400
+                return error_response("预约时段参数错误", {}, 400)
 
-            time_slot = TimeSlot.query.get(slot_id)
+            time_slot = db.session.get(TimeSlot, slot_id)
             if not time_slot:
-                return jsonify({"code": 1, "msg": "预约时段不存在", "data": {}}), 404
+                return error_response("预约时段不存在", {}, 404)
 
             # 同一手机号在同一时段只能保留一笔正常预约。
             existing_booking = Booking.query.filter_by(
@@ -160,12 +162,18 @@ def register_routes(app):
                 status=Booking.STATUS_NORMAL,
             ).first()
             if existing_booking:
-                return jsonify({"code": 1, "msg": "该手机号已预约此时段", "data": {}}), 400
+                return error_response("该手机号已预约此时段", {}, 400)
 
-            # 剩余人数实时计算，只有剩余人数大于0才允许预约。
-            remaining_count = time_slot.max_capacity - time_slot.booked_count
-            if remaining_count <= 0:
-                return jsonify({"code": 1, "msg": "该时段已约满", "data": {}}), 400
+            # 条件更新保证只有剩余人数大于0时才占位，降低并发超卖风险。
+            updated = db.session.execute(
+                update(TimeSlot)
+                .where(TimeSlot.id == slot_id)
+                .where(TimeSlot.booked_count < TimeSlot.max_capacity)
+                .values(booked_count=TimeSlot.booked_count + 1)
+            )
+            if updated.rowcount != 1:
+                db.session.rollback()
+                return error_response("该时段已约满", {}, 400)
 
             booking = Booking(
                 time_slot_id=slot_id,
@@ -173,36 +181,37 @@ def register_routes(app):
                 customer_phone=phone,
                 status=Booking.STATUS_NORMAL,
             )
-            time_slot.booked_count += 1
 
             db.session.add(booking)
             db.session.commit()
+            db.session.refresh(booking)
+            time_slot = db.session.get(TimeSlot, slot_id)
 
             data = {
                 "booking_id": booking.id,
-                "slot_id": time_slot.id,
+                "slot_id": slot_id,
                 "name": booking.customer_name,
                 "phone": booking.customer_phone,
                 "status": booking.status,
                 "remaining_count": time_slot.max_capacity - time_slot.booked_count,
             }
-            return jsonify({"code": 0, "msg": "预约成功", "data": data})
+            return success_response(data, "预约成功")
         except SQLAlchemyError as error:
             db.session.rollback()
             app.logger.exception("创建预约订单数据库异常: %s", error)
-            return jsonify({"code": 1, "msg": "预约失败，请稍后重试", "data": {}}), 500
+            return error_response("预约失败，请稍后重试", {}, 500)
 
     @app.get("/api/user/order")
     def get_user_orders():
         try:
             phone = request.args.get("phone", "").strip()
             if not phone:
-                return jsonify({"code": 1, "msg": "手机号不能为空", "data": []}), 400
+                return error_response("手机号不能为空", [], 400)
             if not re.fullmatch(r"\d{11}", phone):
-                return jsonify({"code": 1, "msg": "手机号必须为11位数字", "data": []}), 400
+                return error_response("手机号必须为11位数字", [], 400)
 
             orders = (
-                Booking.query.join(TimeSlot)
+                Booking.query.options(joinedload(Booking.time_slot))
                 .filter(Booking.customer_phone == phone)
                 .order_by(Booking.created_at.desc())
                 .all()
@@ -226,10 +235,10 @@ def register_routes(app):
                     }
                 )
 
-            return jsonify({"code": 0, "msg": "查询成功", "data": data})
+            return success_response(data, "查询成功")
         except SQLAlchemyError as error:
             app.logger.exception("查询用户订单数据库异常: %s", error)
-            return jsonify({"code": 1, "msg": "查询订单失败", "data": []}), 500
+            return error_response("查询订单失败", [], 500)
 
     @app.put("/api/user/cancel")
     def cancel_user_order():
@@ -237,17 +246,17 @@ def register_routes(app):
             payload = request.get_json(silent=True) or {}
             order_id = payload.get("order_id", request.args.get("order_id"))
             if order_id in (None, ""):
-                return jsonify({"code": 1, "msg": "订单ID不能为空", "data": {}}), 400
+                return error_response("订单ID不能为空", {}, 400)
             try:
                 order_id = int(order_id)
             except (TypeError, ValueError):
-                return jsonify({"code": 1, "msg": "订单ID参数错误", "data": {}}), 400
+                return error_response("订单ID参数错误", {}, 400)
 
-            order = Booking.query.get(order_id)
+            order = db.session.get(Booking, order_id)
             if not order:
-                return jsonify({"code": 1, "msg": "订单不存在", "data": {}}), 404
-            if order.status == Booking.STATUS_CANCELLED:
-                return jsonify({"code": 1, "msg": "订单已取消，不能重复取消", "data": {}}), 400
+                return error_response("订单不存在", {}, 404)
+            if order.status != Booking.STATUS_NORMAL:
+                return error_response("仅正常订单可取消", {}, 400)
 
             order.status = Booking.STATUS_CANCELLED
             if order.time_slot.booked_count > 0:
@@ -261,11 +270,11 @@ def register_routes(app):
                 "slot_id": order.time_slot_id,
                 "remaining_count": order.time_slot.max_capacity - order.time_slot.booked_count,
             }
-            return jsonify({"code": 0, "msg": "取消成功", "data": data})
+            return success_response(data, "取消成功")
         except SQLAlchemyError as error:
             db.session.rollback()
             app.logger.exception("取消用户订单数据库异常: %s", error)
-            return jsonify({"code": 1, "msg": "取消订单失败", "data": {}}), 500
+            return error_response("取消订单失败", {}, 500)
 
     @app.get("/api/activity")
     def get_activities():
@@ -302,10 +311,10 @@ def register_routes(app):
                     }
                 )
 
-            return jsonify({"code": 0, "msg": "查询成功", "data": data})
+            return success_response(data, "查询成功")
         except SQLAlchemyError as error:
             app.logger.exception("查询活动列表数据库异常: %s", error)
-            return jsonify({"code": 1, "msg": "查询活动失败", "data": []}), 500
+            return error_response("查询活动失败", [], 500)
 
     @app.get("/api/summary")
     def summary():
@@ -314,7 +323,7 @@ def register_routes(app):
             "booking_count": Booking.query.count(),
             "activity_count": Activity.query.count(),
         }
-        return jsonify({"code": 0, "message": "success", "data": data})
+        return success_response(data, "查询成功")
 
 
 def register_error_handlers(app):

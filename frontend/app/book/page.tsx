@@ -2,87 +2,43 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTimeSlots } from '../../hooks/useTimeSlots';
+import { requestApi } from '../../utils/api';
 
-type TimeSlot = {
-  id: number;
-  slot_date: string;
-  start_time: string;
-  end_time: string;
-  max_capacity: number;
-  booked_count: number;
-  remaining_count: number;
+type BookOrder = {
+  booking_id?: number;
+  slot_id?: number;
+  name?: string;
+  phone?: string;
+  status?: string;
+  remaining_count?: number;
 };
-
-type TimeSlotResponse = {
-  code: number;
-  msg: string;
-  data: TimeSlot[];
-};
-
-type BookOrderResponse = {
-  code: number;
-  msg: string;
-  data: {
-    booking_id?: number;
-    slot_id?: number;
-    name?: string;
-    phone?: string;
-    status?: string;
-    remaining_count?: number;
-  };
-};
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 export default function BookPage() {
   const router = useRouter();
+  const { timeSlots, loading, errorMsg } = useTimeSlots();
 
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlotId, setSelectedSlotId] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    async function fetchTimeSlots() {
-      try {
-        setLoading(true);
-        setErrorMsg('');
-
-        const response = await fetch(`${API_BASE_URL}/api/time-slot`, {
-          method: 'GET',
-          cache: 'no-store',
-        });
-        const result: TimeSlotResponse = await response.json();
-
-        if (!response.ok || result.code !== 0) {
-          throw new Error(result.msg || '预约时段加载失败');
-        }
-
-        const slots = Array.isArray(result.data) ? result.data : [];
-        setTimeSlots(slots);
-
-        const initialSlotId = new URLSearchParams(window.location.search).get('slot_id') || '';
-        const initialSlot = slots.find((slot) => String(slot.id) === initialSlotId);
-        if (initialSlot) {
-          setSelectedDate(initialSlot.slot_date);
-          setSelectedSlotId(String(initialSlot.id));
-        } else if (slots.length > 0) {
-          setSelectedDate(slots[0].slot_date);
-        }
-      } catch (error) {
-        setErrorMsg(error instanceof Error ? error.message : '预约时段加载失败');
-        setTimeSlots([]);
-      } finally {
-        setLoading(false);
-      }
+    if (selectedDate || timeSlots.length === 0) {
+      return;
     }
 
-    fetchTimeSlots();
-  }, []);
+    const initialSlotId = new URLSearchParams(window.location.search).get('slot_id') || '';
+    const initialSlot = timeSlots.find((slot) => String(slot.id) === initialSlotId);
+    if (initialSlot) {
+      setSelectedDate(initialSlot.slot_date);
+      setSelectedSlotId(String(initialSlot.id));
+      return;
+    }
+
+    setSelectedDate(timeSlots[0].slot_date);
+  }, [selectedDate, timeSlots]);
 
   const dates = useMemo(() => {
     return Array.from(new Set(timeSlots.map((slot) => slot.slot_date)));
@@ -136,24 +92,16 @@ export default function BookPage() {
     try {
       setSubmitting(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/book-order`, {
+      const result = await requestApi<BookOrder>('/api/book-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),
           slot_id: Number(selectedSlotId),
         }),
       });
-      const result: BookOrderResponse = await response.json();
 
-      if (!response.ok || result.code !== 0) {
-        throw new Error(result.msg || '预约失败');
-      }
-
-      alert(`预约成功，订单号：${result.data.booking_id ?? ''}`);
+      alert(`预约成功，订单号：${result.booking_id ?? ''}`);
       router.push('/user');
     } catch (error) {
       alert(error instanceof Error ? error.message : '预约失败');

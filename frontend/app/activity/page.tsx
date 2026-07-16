@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { requestApi } from '../../utils/api';
 
 type Activity = {
   id: number;
@@ -11,14 +12,6 @@ type Activity = {
   promotion_text: string;
   status: '未开始' | '进行中' | '已结束' | string;
 };
-
-type ActivityResponse = {
-  code: number;
-  msg: string;
-  data: Activity[];
-};
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 export default function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -31,17 +24,8 @@ export default function ActivityPage() {
         setLoading(true);
         setErrorMsg('');
 
-        const response = await fetch(`${API_BASE_URL}/api/activity`, {
-          method: 'GET',
-          cache: 'no-store',
-        });
-        const result: ActivityResponse = await response.json();
-
-        if (!response.ok || result.code !== 0) {
-          throw new Error(result.msg || '活动加载失败');
-        }
-
-        setActivities(Array.isArray(result.data) ? result.data : []);
+        const data = await requestApi<Activity[]>('/api/activity');
+        setActivities(Array.isArray(data) ? data : []);
       } catch (error) {
         setErrorMsg(error instanceof Error ? error.message : '活动加载失败');
         setActivities([]);

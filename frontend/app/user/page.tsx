@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { requestApi } from '../../utils/api';
 
 type Order = {
   order_id: number;
@@ -15,25 +16,6 @@ type Order = {
     end_time: string;
   };
 };
-
-type OrderResponse = {
-  code: number;
-  msg: string;
-  data: Order[];
-};
-
-type CancelResponse = {
-  code: number;
-  msg: string;
-  data: {
-    order_id?: number;
-    status?: string;
-    slot_id?: number;
-    remaining_count?: number;
-  };
-};
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 export default function UserPage() {
   const [phone, setPhone] = useState('');
@@ -60,20 +42,11 @@ export default function UserPage() {
       setLoading(true);
       setErrorMsg('');
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/user/order?phone=${encodeURIComponent(targetPhone)}`,
-        {
-          method: 'GET',
-          cache: 'no-store',
-        },
+      const data = await requestApi<Order[]>(
+        `/api/user/order?phone=${encodeURIComponent(targetPhone)}`,
       );
-      const result: OrderResponse = await response.json();
 
-      if (!response.ok || result.code !== 0) {
-        throw new Error(result.msg || '订单查询失败');
-      }
-
-      setOrders(Array.isArray(result.data) ? result.data : []);
+      setOrders(Array.isArray(data) ? data : []);
       setSearched(true);
     } catch (error) {
       setOrders([]);
@@ -98,18 +71,10 @@ export default function UserPage() {
     try {
       setCancelingId(orderId);
 
-      const response = await fetch(`${API_BASE_URL}/api/user/cancel`, {
+      await requestApi('/api/user/cancel', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ order_id: orderId }),
       });
-      const result: CancelResponse = await response.json();
-
-      if (!response.ok || result.code !== 0) {
-        throw new Error(result.msg || '取消预约失败');
-      }
 
       alert('取消成功');
       await fetchOrders(phone.trim());
