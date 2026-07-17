@@ -25,6 +25,19 @@ CREATE TABLE IF NOT EXISTS activity (
     CHECK (start_at < end_at)
 );
 
+CREATE TABLE IF NOT EXISTS user (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, -- 用户主键ID
+    account TEXT NOT NULL UNIQUE, -- 登录账号
+    password_hash TEXT NOT NULL, -- 密码哈希
+    phone TEXT NOT NULL UNIQUE, -- 绑定手机号，每个手机号只能绑定一个账号
+    username TEXT NOT NULL, -- 用户名
+    gender TEXT NOT NULL DEFAULT '未设置' CHECK (gender IN ('未设置', '女', '男', '其他')), -- 性别
+    birthday DATE, -- 生日
+    avatar TEXT NOT NULL DEFAULT '', -- 头像DataURL
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP -- 更新时间
+);
+
 CREATE TABLE IF NOT EXISTS booking (
     id INTEGER PRIMARY KEY AUTOINCREMENT, -- 预约订单主键ID
     time_slot_id INTEGER NOT NULL, -- 预约时段ID

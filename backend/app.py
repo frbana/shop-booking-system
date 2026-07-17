@@ -10,6 +10,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import HTTPException
+from werkzeug.security import check_password_hash, generate_password_hash
 
 try:
     from dotenv import load_dotenv
@@ -17,9 +18,9 @@ except ImportError:
     load_dotenv = None
 
 try:
-    from .models import Activity, Booking, TimeSlot, db
+    from .models import Activity, Booking, TimeSlot, User, db
 except ImportError:
-    from models import Activity, Booking, TimeSlot, db
+    from models import Activity, Booking, TimeSlot, User, db
 
 
 def success_response(data=None, msg="操作成功"):
@@ -28,6 +29,27 @@ def success_response(data=None, msg="操作成功"):
 
 def error_response(msg="操作失败", data=None, status_code=400):
     return jsonify({"code": 1, "msg": msg, "data": data if data is not None else {}}), status_code
+
+
+def serialize_user(user):
+    return {
+        "id": user.id,
+        "account": user.account,
+        "phone": user.phone,
+        "username": user.username,
+        "gender": user.gender,
+        "birthday": user.birthday.isoformat() if user.birthday else "",
+        "avatar": user.avatar or "",
+    }
+
+
+def parse_birthday(value):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError("生日格式必须为YYYY-MM-DD")
 
 
 def create_app():
@@ -98,6 +120,106 @@ def register_routes(app):
     @app.get("/api/health")
     def health_check():
         return success_response({"status": "healthy"}, "ok")
+
+    @app.post("/api/user/register")
+    def register_user():
+        try:
+            payload = request.get_json(silent=True) or {}
+            account = str(payload.get("account", "")).strip()
+            password = str(payload.get("password", ""))
+            phone = str(payload.get("phone", "")).strip()
+            username = str(payload.get("username", "")).strip() or account
+
+            if not account:
+                return error_response("账号不能为空", {}, 400)
+            if len(password) < 6:
+                return error_response("密码至少需要6位", {}, 400)
+            if not re.fullmatch(r"\d{11}", phone):
+                return error_response("手机号必须为11位数字", {}, 400)
+            if User.query.filter_by(account=account).first():
+                return error_response("账号已存在", {}, 400)
+            if User.query.filter_by(phone=phone).first():
+                return error_response("该手机号已绑定其他账号", {}, 400)
+
+            user = User(
+                account=account,
+                password_hash=generate_password_hash(password),
+                phone=phone,
+                username=username,
+                gender="未设置",
+                birthday=None,
+                avatar="",
+            )
+            db.session.add(user)
+            db.session.commit()
+            db.session.refresh(user)
+            return success_response(serialize_user(user), "注册成功")
+        except SQLAlchemyError as error:
+            db.session.rollback()
+            app.logger.exception("用户注册数据库异常: %s", error)
+            return error_response("注册失败，请稍后重试", {}, 500)
+
+    @app.post("/api/user/login")
+    def login_user():
+        try:
+            payload = request.get_json(silent=True) or {}
+            account = str(payload.get("account", "")).strip()
+            password = str(payload.get("password", ""))
+
+            if not account:
+                return error_response("账号不能为空", {}, 400)
+            if not password:
+                return error_response("密码不能为空", {}, 400)
+
+            user = User.query.filter_by(account=account).first()
+            if not user or not check_password_hash(user.password_hash, password):
+                return error_response("账号或密码错误", {}, 401)
+
+            return success_response(serialize_user(user), "登录成功")
+        except SQLAlchemyError as error:
+            app.logger.exception("用户登录数据库异常: %s", error)
+            return error_response("登录失败，请稍后重试", {}, 500)
+
+    @app.put("/api/user/profile")
+    def update_user_profile():
+        try:
+            payload = request.get_json(silent=True) or {}
+            user_id = payload.get("user_id")
+            try:
+                user_id = int(user_id)
+            except (TypeError, ValueError):
+                return error_response("用户ID参数错误", {}, 400)
+
+            user = db.session.get(User, user_id)
+            if not user:
+                return error_response("用户不存在", {}, 404)
+
+            username = str(payload.get("username", user.username)).strip()
+            gender = str(payload.get("gender", user.gender)).strip() or "未设置"
+            birthday_value = payload.get("birthday", user.birthday.isoformat() if user.birthday else "")
+            avatar = str(payload.get("avatar", user.avatar or ""))
+
+            if not username:
+                return error_response("用户名不能为空", {}, 400)
+            if gender not in {"未设置", "女", "男", "其他"}:
+                return error_response("性别参数错误", {}, 400)
+
+            try:
+                birthday = parse_birthday(birthday_value)
+            except ValueError as error:
+                return error_response(str(error), {}, 400)
+
+            user.username = username
+            user.gender = gender
+            user.birthday = birthday
+            user.avatar = avatar
+            db.session.commit()
+
+            return success_response(serialize_user(user), "保存成功")
+        except SQLAlchemyError as error:
+            db.session.rollback()
+            app.logger.exception("保存用户资料数据库异常: %s", error)
+            return error_response("保存用户资料失败", {}, 500)
 
     @app.get("/api/time-slot")
     def get_time_slots():

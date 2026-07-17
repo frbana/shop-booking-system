@@ -98,6 +98,54 @@ class Activity(db.Model):
         )
 
 
+class User(db.Model):
+    __tablename__ = "user"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    account = db.Column(db.String(50), nullable=False, unique=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    phone = db.Column(db.String(11), nullable=False, unique=True)
+    username = db.Column(db.String(50), nullable=False)
+    gender = db.Column(db.String(10), nullable=False, default="未设置")
+    birthday = db.Column(db.Date, nullable=True)
+    avatar = db.Column(db.Text, nullable=False, default="")
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "gender IN ('未设置', '女', '男', '其他')",
+            name="ck_user_gender",
+        ),
+    )
+
+    @validates("account")
+    def validate_account(self, key, value):
+        if not value or not value.strip():
+            raise ValueError("账号不能为空")
+        return value.strip()
+
+    @validates("phone")
+    def validate_phone(self, key, value):
+        if not value or not re.fullmatch(r"\d{11}", value):
+            raise ValueError("手机号必须为11位数字")
+        return value
+
+    @validates("gender")
+    def validate_gender(self, key, value):
+        if value not in {"未设置", "女", "男", "其他"}:
+            raise ValueError("性别参数错误")
+        return value
+
+    def __repr__(self):
+        return f"<User id={self.id} account={self.account!r} phone={self.phone}>"
+
+
 class Booking(db.Model):
     __tablename__ = "booking"
 
