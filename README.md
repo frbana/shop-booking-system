@@ -1,8 +1,8 @@
 # shop-booking-system
 
-店铺预约系统是一个前后端分离的实训项目，面向线下门店预约场景，支持用户查看可预约时段、提交预约信息、查询个人预约记录、取消预约订单，并展示店铺活动信息。
+店铺预约系统是一个前后端分离的实训项目，面向线下门店预约场景，提供预约时段展示、预约下单、个人中心、登录注册、用户资料维护、头像上传、预约记录查询与取消、店铺活动展示等功能。
 
-项目采用 `Next.js + Flask + SQLite` 实现基础业务闭环，前端适配部署到 Vercel，后端适配部署到 Render，适合作为 GitHub 公开仓库、课程实训交付和全栈入门项目展示。
+项目采用 `Next.js + Flask + SQLite` 实现业务闭环，前端适配部署到 Vercel，后端适配部署到 Render，适合作为 GitHub 公开仓库、课程实训交付和全栈入门项目展示。
 
 ## 项目功能
 
@@ -10,25 +10,33 @@
 
 | 页面 | 路由 | 功能说明 |
 | --- | --- | --- |
-| 首页 | `/` | 展示店铺可预约日期和时段卡片，实时显示剩余名额，已约满时段不可继续选择。 |
-| 预约页 | `/book` | 支持选择预约日期、预约时段，填写姓名和 11 位手机号后提交预约订单。 |
-| 个人中心 | `/user` | 通过手机号查询预约记录，展示订单状态、预约时间、订单号，并支持取消正常订单。 |
-| 活动页 | `/activity` | 展示店铺活动列表、活动时间、优惠文案，并根据当前时间显示未开始、进行中、已结束状态。 |
+| 首页 | `/` | 展示未来一个月可预约时段，显示日期、时间、剩余名额，已约满时段不可继续预约。 |
+| 预约页 | `/book` | 选择日期和时段，填写姓名、手机号后提交预约订单，提交后可到个人中心查询。 |
+| 活动页 | `/activity` | 展示店铺活动、优惠文案、活动起止时间，并自动显示未开始、进行中、已结束状态。 |
+| 个人中心 | `/user` | 支持注册、登录、退出登录；登录后展示用户信息、上传头像、编辑用户名/性别/生日，并查询或取消绑定手机号下的预约。 |
 
-### 4 个核心后端接口
+### 用户与预约规则
+
+- 用户注册时需要账号、密码、手机号和用户名。
+- 密码使用哈希保存到数据库，不直接保存明文密码。
+- 每个账号绑定一个手机号。
+- 每个手机号只能绑定一个账号，避免多个账户共用同一手机号。
+- 个人中心必须先登录或注册，登录后才能查看用户资料和预约记录。
+- 头像支持本地选择图片，前端转为 DataURL 后保存到 SQLite 数据库字段。
+- 预约订单仍以手机号关联查询，个人中心只查询当前登录账号绑定手机号下的预约记录。
+
+### 后端接口
 
 | 方法 | 接口 | 功能说明 |
 | --- | --- | --- |
 | `GET` | `/api/time-slot` | 查询全部预约时段，按日期和时间排序，返回最大容量、已预约人数和实时剩余人数。 |
 | `POST` | `/api/book-order` | 创建预约订单，校验姓名、手机号、预约时段，防止同一手机号重复预约同一时段，并控制满员时段不可超额预约。 |
-| `GET` | `/api/user/order?phone=手机号` | 根据手机号查询用户预约订单，返回订单状态、下单时间和关联预约时段信息。 |
-| `PUT` | `/api/user/cancel` | 根据订单 ID 取消正常订单，更新订单状态，并释放对应预约时段名额。 |
-
-补充接口：
-
-| 方法 | 接口 | 功能说明 |
-| --- | --- | --- |
-| `GET` | `/api/activity` | 查询店铺活动列表。 |
+| `GET` | `/api/activity` | 查询店铺活动列表，支持 `page`、`size` 分页参数，并返回活动状态。 |
+| `POST` | `/api/user/register` | 用户注册，保存账号、密码哈希、绑定手机号和用户名。 |
+| `POST` | `/api/user/login` | 用户登录，校验账号密码并返回用户资料。 |
+| `PUT` | `/api/user/profile` | 保存用户头像、用户名、性别、生日。 |
+| `GET` | `/api/user/order?phone=手机号` | 根据手机号查询预约订单。个人中心使用当前账号绑定手机号调用。 |
+| `PUT` | `/api/user/cancel` | 根据订单 ID 取消正常订单，释放对应预约时段名额。 |
 | `GET` | `/api/health` | 健康检查接口，用于本地调试和线上部署验证。 |
 | `GET` | `/api/summary` | 查询预约时段、订单和活动数量统计。 |
 
@@ -37,7 +45,9 @@
 | 分类 | 技术 |
 | --- | --- |
 | 前端框架 | Next.js 14、React 18、TypeScript |
+| 前端路由 | Next.js App Router |
 | 后端框架 | Flask、Flask-SQLAlchemy、Flask-CORS |
+| 密码处理 | Werkzeug Password Hash |
 | 数据库 | SQLite |
 | 前端部署 | Vercel |
 | 后端部署 | Render |
@@ -93,64 +103,74 @@ source .venv/bin/activate
 pip install Flask Flask-SQLAlchemy flask-cors python-dotenv gunicorn
 ```
 
-可选：如果后续新增 `requirements.txt`，也可以使用：
-
-```bash
-pip install -r requirements.txt
-```
-
 ## 本地启动
 
 前端和后端需要分别启动，建议打开两个终端窗口。
 
 ### 1. 启动 Flask 后端
 
-终端 A：
+macOS 上 `5000` 端口可能被系统服务占用，推荐使用 `5001`：
 
 ```bash
 cd /Users/bana/shop-booking-system/backend
 source .venv/bin/activate
-python app.py
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 FLASK_PORT=5001 python app.py
 ```
 
-默认后端地址：
+后端地址：
 
 ```text
-http://localhost:5000
+http://127.0.0.1:5001
 ```
 
 健康检查：
 
 ```text
-http://localhost:5000/api/health
+http://127.0.0.1:5001/api/health
 ```
 
 ### 2. 启动 Next.js 前端
 
-终端 B：
+先配置前端 API 地址：
 
 ```bash
 cd /Users/bana/shop-booking-system/frontend
+printf 'NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001\n' > .env.local
 npm run dev
 ```
 
-默认前端地址：
+前端地址：
 
 ```text
 http://localhost:3000
 ```
 
-前端默认请求后端地址为：
+如果页面出现 `missing required error components, refreshing...`，可清理 Next.js 缓存后重启：
 
-```text
-http://localhost:5000
+```bash
+cd /Users/bana/shop-booking-system/frontend
+rm -rf .next
+npm run dev
 ```
 
-如需自定义后端地址，可在 `frontend/.env.local` 中配置：
+## 示例数据
 
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+项目提供示例数据脚本，可生成未来 30 天预约时段、店铺活动和示例预约订单。
+
+```bash
+cd /Users/bana/shop-booking-system/backend
+source .venv/bin/activate
+python seed_data.py
 ```
+
+当前脚本会生成：
+
+- 未来 30 天预约时段，每天 5 个时段，共 150 条。
+- 多条店铺活动，覆盖进行中、未开始、已结束状态。
+- 若干示例预约订单。
+- 个人中心测试预约手机号：`13800138000`。
+
+说明：注册登录功能需要先在个人中心注册账号。注册时可绑定已有预约手机号，例如 `13800138000`，登录后即可查询该手机号下的示例预约记录。
 
 ## 线上 Demo
 
@@ -215,7 +235,7 @@ LOG_DIR=logs
 ```text
 shop-booking-system/
 ├── README.md                         # 项目说明文档
-├── api_doc.md                        # 接口文档预留文件
+├── api_doc.md                        # API 接口文档
 ├── prompt_log.md                     # AI Prompt 使用与归档记录
 ├── summary.md                        # 项目总结预留文件
 ├── .env.example                      # 环境变量示例
@@ -223,7 +243,8 @@ shop-booking-system/
 ├── .gitattributes                    # Git 属性配置
 ├── backend/                          # Flask 后端项目
 │   ├── app.py                        # Flask 应用入口、接口路由、异常处理、日志和跨域配置
-│   ├── models.py                     # SQLAlchemy 数据模型：预约时段、预约订单、店铺活动
+│   ├── models.py                     # SQLAlchemy 模型：用户、预约时段、预约订单、店铺活动
+│   ├── seed_data.py                  # 示例数据生成脚本
 │   └── db/
 │       └── init.sql                  # SQLite 建表 SQL
 ├── frontend/                         # Next.js 前端项目
@@ -234,16 +255,19 @@ shop-booking-system/
 │   ├── next-env.d.ts                 # Next.js TypeScript 声明文件
 │   ├── app/                          # Next.js App Router 页面
 │   │   ├── layout.tsx                # 全局布局
-│   │   ├── globals.css               # 全局样式
+│   │   ├── globals.css               # 全局样式和主题变量
+│   │   ├── error.tsx                 # 页面错误组件
+│   │   ├── not-found.tsx             # 404 页面组件
 │   │   ├── page.tsx                  # 首页：预约时段列表
 │   │   ├── book/
 │   │   │   └── page.tsx              # 预约页：提交预约订单
 │   │   ├── user/
-│   │   │   └── page.tsx              # 个人中心：查询和取消预约
+│   │   │   └── page.tsx              # 个人中心：登录注册、用户资料、预约记录
 │   │   └── activity/
 │   │       └── page.tsx              # 活动页：店铺活动列表
 │   ├── components/
-│   │   └── Nav.tsx                   # 全局导航组件
+│   │   ├── Nav.tsx                   # 全局导航组件
+│   │   └── StyleBlocks.tsx           # 公共样式组件：标题、状态块、状态标签
 │   ├── hooks/
 │   │   └── useTimeSlots.ts           # 预约时段数据请求 Hook
 │   └── utils/
@@ -263,21 +287,36 @@ shop-booking-system/
 ```text
 frontend/node_modules/                # 前端依赖目录
 frontend/.next/                       # Next.js 构建缓存
+frontend/.env.local                   # 前端本地环境变量
+backend/.venv/                        # Python 虚拟环境
+backend/instance/shop_booking.db      # 后端本地 SQLite 数据库
 backend/__pycache__/                  # Python 字节码缓存
 ```
+
+## 数据库表说明
+
+| 表名 | 说明 |
+| --- | --- |
+| `user` | 用户账号、密码哈希、绑定手机号、头像、用户名、性别、生日。 |
+| `time_slot` | 店铺可预约日期、开始时间、结束时间、最大容量、已预约人数。 |
+| `booking` | 用户预约订单，包含预约人姓名、手机号、订单状态和关联时段。 |
+| `activity` | 店铺活动标题、开始时间、结束时间和优惠文案。 |
 
 ## 实训交付物清单
 
 | 交付物 | 路径 | 说明 |
 | --- | --- | --- |
 | 项目源码 | `backend/`、`frontend/` | 店铺预约系统前后端源码。 |
-| 数据库建表 SQL | `backend/db/init.sql` | SQLite 三张核心表：预约时段、预约订单、店铺活动。 |
+| 数据库建表 SQL | `backend/db/init.sql` | SQLite 四张核心表：用户、预约时段、预约订单、店铺活动。 |
 | 数据模型代码 | `backend/models.py` | SQLAlchemy ORM 模型和字段约束。 |
-| 后端接口实现 | `backend/app.py` | Flask API、跨域、日志、异常处理和业务逻辑。 |
-| 前端页面实现 | `frontend/app/` | 首页、预约页、个人中心、活动页。 |
+| 后端接口实现 | `backend/app.py` | Flask API、登录注册、用户资料、预约、活动、跨域、日志和异常处理。 |
+| 示例数据脚本 | `backend/seed_data.py` | 生成未来一个月预约时段、示例活动和示例订单。 |
+| 前端页面实现 | `frontend/app/` | 首页、预约页、活动页、个人中心、错误页和 404 页。 |
 | 公共导航组件 | `frontend/components/Nav.tsx` | 页面间导航入口。 |
+| 公共样式组件 | `frontend/components/StyleBlocks.tsx` | 页面标题、状态提示、状态标签等复用组件。 |
 | 前端请求封装 | `frontend/utils/api.ts` | 统一 API Base URL、请求和错误处理。 |
 | 数据请求 Hook | `frontend/hooks/useTimeSlots.ts` | 预约时段查询复用逻辑。 |
+| API 文档 | `api_doc.md` | 接口请求方式、入参、返回示例和业务限制说明。 |
 | AI 代码评审记录 | `docs/code_review/day2_ai_code_review.md` | Day2 项目代码评审与问题记录。 |
 | Prompt 归档记录 | `prompt_log.md` | 实训期间 AI 生成任务记录。 |
 | README 项目文档 | `README.md` | GitHub 公开仓库展示文档。 |
@@ -306,7 +345,15 @@ npm run build
 ```bash
 cd backend
 source .venv/bin/activate
-python app.py
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 FLASK_PORT=5001 python app.py
+```
+
+生成示例数据：
+
+```bash
+cd backend
+source .venv/bin/activate
+python seed_data.py
 ```
 
 后端生产启动示例：
@@ -319,7 +366,7 @@ gunicorn backend.app:app
 
 在提交到 GitHub 前，建议确认：
 
-1. 不提交 `.env`、数据库运行文件、日志文件和依赖缓存目录。
+1. 不提交 `.env`、`.env.local`、数据库运行文件、日志文件和依赖缓存目录。
 2. README 中补充真实 Vercel 前端地址和 Render 后端地址。
 3. Postman、演示视频、Prompt 截图等实训材料放入 `docs/` 对应目录。
-4. 线上部署后验证 `/api/health`、`/api/time-slot`、`/api/activity` 等接口可以正常访问。
+4. 线上部署后验证 `/api/health`、`/api/time-slot`、`/api/activity`、`/api/user/register`、`/api/user/login` 等接口可以正常访问。
