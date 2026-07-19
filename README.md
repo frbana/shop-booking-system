@@ -334,6 +334,7 @@ python seed_data.py
    - Root Directory：`frontend`
    - Build Command：`npm run build`
    - Install Command：`npm install`
+   - Output Directory：`out`
 4. 配置环境变量：
 
 ```env
@@ -372,6 +373,7 @@ Framework Preset: Next.js
 Root Directory: frontend
 Build Command: npm run build
 Install Command: npm install
+Output Directory: out
 ```
 
 ### 3. 配置 Vercel 环境变量
