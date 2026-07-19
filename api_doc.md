@@ -5,7 +5,7 @@
 ## 通用说明
 
 - 本地基础地址：`http://127.0.0.1:5001`
-- 线上前端地址：`https://你的-vercel-前端域名.vercel.app`
+- 线上前端地址：`https://shop-booking-system-icem.vercel.app/`
 - 后端接口地址：当前方案仅本地演示，使用 `http://127.0.0.1:5001`
 - 请求体格式：`application/json`
 - 统一返回格式：

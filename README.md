@@ -298,7 +298,7 @@ python seed_data.py
 前端 Demo：
 
 ```text
-待填写：https://你的-vercel-项目地址.vercel.app
+https://shop-booking-system-icem.vercel.app/
 ```
 
 后端 API：
@@ -391,7 +391,7 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001
 拿到 Vercel 前端地址后，例如：
 
 ```text
-https://你的-vercel-前端域名.vercel.app
+https://shop-booking-system-icem.vercel.app/
 ```
 
 本地启动 Flask 后端时，`CORS_ORIGINS` 要包含这个 Vercel 地址：
@@ -399,7 +399,7 @@ https://你的-vercel-前端域名.vercel.app
 ```bash
 cd /Users/bana/shop-booking-system/backend
 source .venv/bin/activate
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://你的-vercel-前端域名.vercel.app FLASK_PORT=5001 python app.py
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://shop-booking-system-icem.vercel.app FLASK_PORT=5001 python app.py
 ```
 
 如果需要先生成示例数据：
