@@ -2,7 +2,7 @@
 
 店铺预约系统是一个前后端分离的实训项目，面向线下门店预约场景，提供预约时段展示、预约下单、个人中心、登录注册、用户资料维护、头像上传、预约记录查询与取消、店铺活动展示等功能。
 
-项目采用 `Next.js + Flask + SQLite` 实现业务闭环，前端适配部署到 Vercel，后端适配部署到 Zeabur，适合作为 GitHub 公开仓库、课程实训交付和全栈入门项目展示。
+项目采用 `Next.js + Flask + SQLite` 实现业务闭环，前端适配部署到 Vercel，后端用于本地运行演示，适合作为 GitHub 公开仓库、课程实训交付和全栈入门项目展示。
 
 ## 项目功能
 
@@ -50,7 +50,7 @@
 | 密码处理 | Werkzeug Password Hash |
 | 数据库 | SQLite |
 | 前端部署 | Vercel |
-| 后端部署 | Zeabur |
+| 后端运行 | 本地 Flask 演示 |
 | 开发环境 | macOS、Homebrew、Node.js、Python |
 
 ## Mac 本地环境安装
@@ -304,18 +304,28 @@ python seed_data.py
 后端 API：
 
 ```text
-待填写：https://你的-zeabur-后端域名.zeabur.app
+本地演示：http://127.0.0.1:5001
 ```
 
 后端健康检查：
 
 ```text
-待填写：https://你的-zeabur-后端域名.zeabur.app/api/health
+本地演示：http://127.0.0.1:5001/api/health
 ```
 
 ## 部署说明
 
-### Vercel 部署前端
+本项目当前采用“前端单独部署到 Vercel，后端只在本地运行演示”的方式。
+
+重要说明：
+
+- Vercel 只托管 Next.js 前端页面。
+- Flask 后端不部署到公网平台，只在演示电脑本地运行。
+- 如果 Vercel 前端配置 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001`，浏览器会请求“当前访问者电脑上的 5001 端口”。
+- 因此，只有在你的电脑本地启动 Flask 后端时，你打开 Vercel 前端 URL 才能完整演示预约、登录、活动、查询等接口功能。
+- 其他人单独打开 Vercel 前端 URL 时，如果他们本机没有运行后端，会看到接口请求失败。这是当前部署方案的正常限制。
+
+### Vercel 部署前端操作步骤
 
 1. 将项目推送到 GitHub 公开仓库。
 2. 在 Vercel 导入该 GitHub 仓库。
@@ -327,24 +337,17 @@ python seed_data.py
 4. 配置环境变量：
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://你的-zeabur-后端域名.zeabur.app
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001
 ```
 
-### Zeabur 部署后端
+### 1. 推送代码到 GitHub
 
-Zeabur 适合从 GitHub 仓库直接部署 Flask 后端。前端仍部署到 Vercel，后端域名通常是：
-
-```text
-https://你的-zeabur-后端域名.zeabur.app
-```
-
-#### 1. 上传代码到 GitHub
-
-先把项目推送到 GitHub 公开仓库。Zeabur 可以直接连接 GitHub 仓库部署。
+在项目根目录执行：
 
 ```bash
+cd /Users/bana/shop-booking-system
 git add .
-git commit -m "prepare zeabur deploy"
+git commit -m "deploy frontend to vercel"
 git branch -M main
 git remote add origin https://github.com/你的GitHub用户名/shop-booking-system.git
 git push -u origin main
@@ -357,84 +360,67 @@ git remote set-url origin https://github.com/你的GitHub用户名/shop-booking-
 git push -u origin main
 ```
 
-#### 2. 在 Zeabur 创建后端服务
+### 2. 在 Vercel 创建前端项目
 
-1. 登录 Zeabur。
-2. 创建 Project。
-3. 点击 `Add Service`。
-4. 选择 `Deploy from GitHub`。
-5. 选择 `shop-booking-system` 仓库。
-6. 服务 Root Directory 填写：
+1. 登录 Vercel。
+2. 点击 `Add New Project`。
+3. 选择刚才的 GitHub 仓库。
+4. 配置如下：
 
 ```text
-backend
+Framework Preset: Next.js
+Root Directory: frontend
+Build Command: npm run build
+Install Command: npm install
 ```
 
-后端依赖文件位于：
+### 3. 配置 Vercel 环境变量
+
+在 Vercel 项目的 Environment Variables 中添加：
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001
+```
+
+然后点击 Deploy。
+
+### 4. 本地启动后端配合 Vercel 前端演示
+
+拿到 Vercel 前端地址后，例如：
+
+```text
+https://你的-vercel-前端域名.vercel.app
+```
+
+本地启动 Flask 后端时，`CORS_ORIGINS` 要包含这个 Vercel 地址：
 
 ```bash
-backend/requirements.txt
+cd /Users/bana/shop-booking-system/backend
+source .venv/bin/activate
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://你的-vercel-前端域名.vercel.app FLASK_PORT=5001 python app.py
 ```
 
-Zeabur 会根据该文件安装 Flask、Flask-SQLAlchemy、flask-cors、python-dotenv、gunicorn。
+如果需要先生成示例数据：
 
-#### 3. 配置 Zeabur 环境变量
-
-在 Zeabur 后端服务的 Variables 中配置：
-
-```env
-APP_ENV=production
-FLASK_ENV=production
-SECRET_KEY=请替换为复杂随机字符串
-DATABASE_URL=sqlite:///shop_booking.db
-CORS_ORIGINS=https://你的-vercel-前端域名.vercel.app
-LOG_DIR=logs
-ZBPACK_PYTHON_ENTRY=app.py
-ZBPACK_START_COMMAND=python seed_data.py && _startup
+```bash
+cd /Users/bana/shop-booking-system/backend
+source .venv/bin/activate
+python seed_data.py
 ```
 
-说明：
+### 5. 演示访问方式
 
-- `ZBPACK_PYTHON_ENTRY=app.py` 用于告诉 Zeabur Python 入口文件是 `backend/app.py`。
-- `ZBPACK_START_COMMAND=python seed_data.py && _startup` 会在启动前执行示例数据脚本，然后继续执行 Zeabur 自动生成的启动命令。
-- `CORS_ORIGINS` 必须填写真实 Vercel 前端地址，否则前端会跨域失败。
-- Zeabur 会自动提供 `PORT` 环境变量，后端代码已兼容 `PORT`。
+1. 保持本地 Flask 后端终端运行。
+2. 浏览器打开 Vercel 前端 URL。
+3. 页面中的接口请求会访问本机 `http://127.0.0.1:5001`。
+4. 可以演示首页时段、活动页、预约提交、注册登录、头像上传、预约查询和取消。
 
-#### 4. 部署并获取后端域名
+### 6. 常见问题
 
-保存配置后触发部署。部署完成后，在 Zeabur 服务页面绑定或查看公开域名，例如：
-
-```text
-https://shop-booking-api.zeabur.app
-```
-
-访问健康检查：
-
-```text
-https://shop-booking-api.zeabur.app/api/health
-```
-
-如果返回 JSON，说明后端部署成功。
-
-#### 5. 回到 Vercel 配置前端 API 地址
-
-Vercel 项目里设置环境变量：
-
-```env
-NEXT_PUBLIC_API_BASE_URL=https://你的-zeabur-后端域名.zeabur.app
-```
-
-修改后重新部署 Vercel。
-
-#### 6. Zeabur 常见问题
-
-1. 如果前端报跨域错误，检查 Zeabur 的 `CORS_ORIGINS` 是否等于真实 Vercel 前端地址。
-2. 如果接口 500，进入 Zeabur 服务日志查看 Python 报错。
-3. 如果接口没有数据，确认环境变量 `ZBPACK_START_COMMAND=python seed_data.py && _startup` 已配置，并重新部署。
-4. 如果部署检测不到 Flask 入口，确认 Root Directory 是 `backend`，并配置 `ZBPACK_PYTHON_ENTRY=app.py`。
-5. SQLite 适合实训展示；Zeabur 重新部署或实例迁移时本地文件数据可能不稳定，真实业务建议迁移到 Zeabur PostgreSQL、MySQL 或其他云数据库。
-
-说明：Zeabur 平台会自动分配端口，项目后端已兼容 `PORT` 环境变量；本地开发仍可继续使用 `FLASK_PORT=5001`。
+1. 如果 Vercel 页面显示请求失败，检查本地 Flask 后端是否正在运行。
+2. 如果浏览器报跨域错误，检查本地后端启动命令中的 `CORS_ORIGINS` 是否包含真实 Vercel 地址。
+3. 如果页面没有数据，执行 `python seed_data.py` 后重启后端。
+4. 如果别人打开 Vercel URL 不能使用接口，是因为后端没有公网部署；当前方案只支持本地演示完整功能。
 
 ## 仓库目录结构
 
@@ -573,6 +559,6 @@ gunicorn backend.app:app
 在提交到 GitHub 前，建议确认：
 
 1. 不提交 `.env`、`.env.local`、数据库运行文件、日志文件和依赖缓存目录。
-2. README 中补充真实 Vercel 前端地址和 Zeabur 后端地址。
+2. README 中补充真实 Vercel 前端地址，并说明后端为本地演示地址。
 3. Postman、演示视频、Prompt 截图等实训材料放入 `docs/` 对应目录。
-4. 线上部署后验证 Zeabur 后端的 `/api/health`、`/api/time-slot`、`/api/activity`、`/api/user/register`、`/api/user/login` 等接口可以正常访问。
+4. 前端部署到 Vercel 后，配合本地 Flask 后端验证 `/api/health`、`/api/time-slot`、`/api/activity`、`/api/user/register`、`/api/user/login` 等接口可以正常访问。
