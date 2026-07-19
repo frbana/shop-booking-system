@@ -153,6 +153,127 @@ rm -rf .next
 npm run dev
 ```
 
+## Windows 本地部署说明
+
+以下命令建议在 PowerShell 中执行。
+
+### 1. 安装基础环境
+
+如果电脑已安装 Git、Node.js 和 Python，可以跳过对应安装命令。
+
+```powershell
+winget install Git.Git
+winget install OpenJS.NodeJS
+winget install Python.Python.3.11
+```
+
+安装完成后重新打开 PowerShell，检查版本：
+
+```powershell
+git --version
+node -v
+npm -v
+python --version
+pip --version
+```
+
+### 2. 克隆项目
+
+```powershell
+git clone https://github.com/你的GitHub用户名/shop-booking-system.git
+cd shop-booking-system
+```
+
+### 3. 安装后端依赖
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install Flask Flask-SQLAlchemy flask-cors python-dotenv
+```
+
+如果 PowerShell 阻止虚拟环境脚本运行，可执行：
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+然后重新执行：
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+### 4. 初始化示例数据
+
+```powershell
+python seed_data.py
+```
+
+该脚本会生成未来 30 天预约时段、店铺活动和示例预约订单。
+
+### 5. 启动 Flask 后端
+
+```powershell
+$env:CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
+$env:FLASK_PORT="5001"
+python app.py
+```
+
+后端地址：
+
+```text
+http://127.0.0.1:5001
+```
+
+健康检查：
+
+```text
+http://127.0.0.1:5001/api/health
+```
+
+### 6. 安装并启动前端
+
+新开一个 PowerShell 窗口：
+
+```powershell
+cd shop-booking-system\frontend
+npm install
+Set-Content -Path .env.local -Value "NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001"
+npm run dev
+```
+
+如果当前 PowerShell 已经在项目根目录，前端目录进入命令改为：
+
+```powershell
+cd frontend
+```
+
+前端地址：
+
+```text
+http://localhost:3000
+```
+
+### 7. Windows 常见问题
+
+如果 `npm run dev` 后页面仍读取不到后端，请确认：
+
+1. 后端 PowerShell 窗口没有关闭。
+2. `http://127.0.0.1:5001/api/health` 可以返回 JSON。
+3. `frontend/.env.local` 内容是：
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001
+```
+
+如果修改了 `.env.local`，需要停止并重新执行：
+
+```powershell
+npm run dev
+```
+
 ## 示例数据
 
 项目提供示例数据脚本，可生成未来 30 天预约时段、店铺活动和示例预约订单。
