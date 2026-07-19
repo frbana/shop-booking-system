@@ -2,7 +2,7 @@
 
 店铺预约系统是一个前后端分离的实训项目，面向线下门店预约场景，提供预约时段展示、预约下单、个人中心、登录注册、用户资料维护、头像上传、预约记录查询与取消、店铺活动展示等功能。
 
-项目采用 `Next.js + Flask + SQLite` 实现业务闭环，前端适配部署到 Vercel，后端适配部署到 Render，适合作为 GitHub 公开仓库、课程实训交付和全栈入门项目展示。
+项目采用 `Next.js + Flask + SQLite` 实现业务闭环，前端适配部署到 Vercel，后端适配部署到 Zeabur，适合作为 GitHub 公开仓库、课程实训交付和全栈入门项目展示。
 
 ## 项目功能
 
@@ -50,7 +50,7 @@
 | 密码处理 | Werkzeug Password Hash |
 | 数据库 | SQLite |
 | 前端部署 | Vercel |
-| 后端部署 | Render |
+| 后端部署 | Zeabur |
 | 开发环境 | macOS、Homebrew、Node.js、Python |
 
 ## Mac 本地环境安装
@@ -304,13 +304,13 @@ python seed_data.py
 后端 API：
 
 ```text
-待填写：https://你的-render-服务地址.onrender.com
+待填写：https://你的-zeabur-后端域名.zeabur.app
 ```
 
 后端健康检查：
 
 ```text
-待填写：https://你的-render-服务地址.onrender.com/api/health
+待填写：https://你的-zeabur-后端域名.zeabur.app/api/health
 ```
 
 ## 部署说明
@@ -327,18 +327,60 @@ python seed_data.py
 4. 配置环境变量：
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://你的-render-后端域名.onrender.com
+NEXT_PUBLIC_API_BASE_URL=https://你的-zeabur-后端域名.zeabur.app
 ```
 
-### Render 部署后端
+### Zeabur 部署后端
 
-1. 在 Render 创建 Web Service。
-2. 连接 GitHub 仓库。
-3. Render 服务配置：
-   - Runtime：`Python 3`
-   - Build Command：`pip install Flask Flask-SQLAlchemy flask-cors python-dotenv gunicorn`
-   - Start Command：`gunicorn backend.app:app`
-4. 配置环境变量：
+Zeabur 适合从 GitHub 仓库直接部署 Flask 后端。前端仍部署到 Vercel，后端域名通常是：
+
+```text
+https://你的-zeabur-后端域名.zeabur.app
+```
+
+#### 1. 上传代码到 GitHub
+
+先把项目推送到 GitHub 公开仓库。Zeabur 可以直接连接 GitHub 仓库部署。
+
+```bash
+git add .
+git commit -m "prepare zeabur deploy"
+git branch -M main
+git remote add origin https://github.com/你的GitHub用户名/shop-booking-system.git
+git push -u origin main
+```
+
+如果已经存在 remote，使用：
+
+```bash
+git remote set-url origin https://github.com/你的GitHub用户名/shop-booking-system.git
+git push -u origin main
+```
+
+#### 2. 在 Zeabur 创建后端服务
+
+1. 登录 Zeabur。
+2. 创建 Project。
+3. 点击 `Add Service`。
+4. 选择 `Deploy from GitHub`。
+5. 选择 `shop-booking-system` 仓库。
+6. 服务 Root Directory 填写：
+
+```text
+backend
+```
+
+后端依赖文件位于：
+
+```bash
+backend/requirements.txt
+```
+
+Zeabur 会根据该文件安装 Flask、Flask-SQLAlchemy、flask-cors、python-dotenv、gunicorn。
+
+#### 3. 配置 Zeabur 环境变量
+
+在 Zeabur 后端服务的 Variables 中配置：
 
 ```env
 APP_ENV=production
@@ -347,9 +389,52 @@ SECRET_KEY=请替换为复杂随机字符串
 DATABASE_URL=sqlite:///shop_booking.db
 CORS_ORIGINS=https://你的-vercel-前端域名.vercel.app
 LOG_DIR=logs
+ZBPACK_PYTHON_ENTRY=app.py
+ZBPACK_START_COMMAND=python seed_data.py && _startup
 ```
 
-说明：Render 免费服务的本地文件系统不适合长期保存 SQLite 数据。实训演示可以使用 SQLite，生产场景建议迁移到 PostgreSQL、Supabase 或 Neon。
+说明：
+
+- `ZBPACK_PYTHON_ENTRY=app.py` 用于告诉 Zeabur Python 入口文件是 `backend/app.py`。
+- `ZBPACK_START_COMMAND=python seed_data.py && _startup` 会在启动前执行示例数据脚本，然后继续执行 Zeabur 自动生成的启动命令。
+- `CORS_ORIGINS` 必须填写真实 Vercel 前端地址，否则前端会跨域失败。
+- Zeabur 会自动提供 `PORT` 环境变量，后端代码已兼容 `PORT`。
+
+#### 4. 部署并获取后端域名
+
+保存配置后触发部署。部署完成后，在 Zeabur 服务页面绑定或查看公开域名，例如：
+
+```text
+https://shop-booking-api.zeabur.app
+```
+
+访问健康检查：
+
+```text
+https://shop-booking-api.zeabur.app/api/health
+```
+
+如果返回 JSON，说明后端部署成功。
+
+#### 5. 回到 Vercel 配置前端 API 地址
+
+Vercel 项目里设置环境变量：
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://你的-zeabur-后端域名.zeabur.app
+```
+
+修改后重新部署 Vercel。
+
+#### 6. Zeabur 常见问题
+
+1. 如果前端报跨域错误，检查 Zeabur 的 `CORS_ORIGINS` 是否等于真实 Vercel 前端地址。
+2. 如果接口 500，进入 Zeabur 服务日志查看 Python 报错。
+3. 如果接口没有数据，确认环境变量 `ZBPACK_START_COMMAND=python seed_data.py && _startup` 已配置，并重新部署。
+4. 如果部署检测不到 Flask 入口，确认 Root Directory 是 `backend`，并配置 `ZBPACK_PYTHON_ENTRY=app.py`。
+5. SQLite 适合实训展示；Zeabur 重新部署或实例迁移时本地文件数据可能不稳定，真实业务建议迁移到 Zeabur PostgreSQL、MySQL 或其他云数据库。
+
+说明：Zeabur 平台会自动分配端口，项目后端已兼容 `PORT` 环境变量；本地开发仍可继续使用 `FLASK_PORT=5001`。
 
 ## 仓库目录结构
 
@@ -488,6 +573,6 @@ gunicorn backend.app:app
 在提交到 GitHub 前，建议确认：
 
 1. 不提交 `.env`、`.env.local`、数据库运行文件、日志文件和依赖缓存目录。
-2. README 中补充真实 Vercel 前端地址和 Render 后端地址。
+2. README 中补充真实 Vercel 前端地址和 Zeabur 后端地址。
 3. Postman、演示视频、Prompt 截图等实训材料放入 `docs/` 对应目录。
-4. 线上部署后验证 `/api/health`、`/api/time-slot`、`/api/activity`、`/api/user/register`、`/api/user/login` 等接口可以正常访问。
+4. 线上部署后验证 Zeabur 后端的 `/api/health`、`/api/time-slot`、`/api/activity`、`/api/user/register`、`/api/user/login` 等接口可以正常访问。

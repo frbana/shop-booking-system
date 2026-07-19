@@ -5,7 +5,7 @@
 ## 通用说明
 
 - 本地基础地址：`http://127.0.0.1:5001`
-- 线上基础地址：`https://你的-render-后端域名.onrender.com`
+- 线上基础地址：`https://你的-zeabur-后端域名.zeabur.app`
 - 请求体格式：`application/json`
 - 统一返回格式：
 
